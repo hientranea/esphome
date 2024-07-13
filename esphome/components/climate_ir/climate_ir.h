@@ -41,21 +41,6 @@ class ClimateIR : public Component,
   void set_supports_cool(bool supports_cool) { this->supports_cool_ = supports_cool; }
   void set_supports_heat(bool supports_heat) { this->supports_heat_ = supports_heat; }
   void set_sensor(sensor::Sensor *sensor) { this->sensor_ = sensor; }
-  
-  void set_supported_swing_modes(bool horizontal, bool vertical, bool both) {
-    this->swing_modes_.clear();
-    if (horizontal || vertical || both)
-      this->swing_modes_.insert(climate::CLIMATE_SWING_OFF);
-
-    if (horizontal)
-      this->swing_modes_.insert(climate::CLIMATE_SWING_HORIZONTAL);
-
-    if (vertical)
-      this->swing_modes_.insert(climate::CLIMATE_SWING_VERTICAL);
-
-    if (both)
-      this->swing_modes_.insert(climate::CLIMATE_SWING_BOTH);
-  }
 
  protected:
   float minimum_temperature_, maximum_temperature_, temperature_step_;
