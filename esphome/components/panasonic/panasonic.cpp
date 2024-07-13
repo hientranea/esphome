@@ -30,7 +30,7 @@ const uint8_t PANASONIC_FAN_MEDIUM = 0x50;
 const uint8_t PANASONIC_FAN_HIGH = 0x70;
 
 // fan swing
-//(message[8] & B00001111)
+//(message[8] & 0x0F)
 // vertical
 // Auto = 0x0F
 // 1 = towards sky, 5 = lowest vains (towards floor)
@@ -60,6 +60,16 @@ static const char *const TAG = "panasonic.climate";
 const uint8_t DATACONST[8] = {0x40, 0x04, 0x07, 0x20, 0x00, 0x00, 0x00, 0x60};  // reversed
 const uint8_t DATACONST_LENGTH = 8;
 const uint8_t MESSAGE_LENGTH = 19;
+
+uint8_t reverse_bits(uint8_t byte, uint8_t num_bits) {
+  uint8_t result = 0;
+  for (uint8_t i = 0; i < num_bits; i++) {
+    result = (result << 1) | (byte & 1);
+    byte >>= 1;
+  }
+  return result;
+}
+
 
 void PanasonicClimate::transmit_state() {
   uint8_t message[MESSAGE_LENGTH] = {0x02, 0x20, 0xE0, 0x04, 0x00, 0x48, 0x3C, 0x80, 0xAF, 0x00,
@@ -106,7 +116,7 @@ void PanasonicClimate::transmit_state() {
     temperature = 30;
   }
   message[6] = (temperature - 16) << 1;
-  message[6] = message[6] | B00100000;
+  message[6] = message[6] | 0x20;
   // bits used for the temp are [4:1]
 
   // https://developers.home-assistant.io/docs/core/entity/climate/#fan-modes
@@ -195,7 +205,7 @@ void PanasonicClimate::transmit_state() {
 
   /* Reverse message bytes */
   for (unsigned char &byte : message) {
-    byte = reverse_bits_8(byte);
+    byte = reverse_bits(byte);
   }
 
   /* Transmit */
@@ -279,14 +289,14 @@ bool PanasonicClimate::on_receive(remote_base::RemoteReceiveData data) {
 
   /* Reverse message bytes */
   for (unsigned char &byte : message) {
-    byte = reverse_bits_8(byte);
+    byte = reverse_bits(byte);
   }
 
   // Byte 5 - Command mode
-  if ((message[4] & B11110000) == 0x80) {
+  if ((message[4] & 0xF0) == 0x80) {
     // This is a non-standard command, not yet supported
     // Econavi, powerful, quiet, nanoe-g, auto comfort
-    ESP_LOGD(TAG, "Unsupported command received: %s", hexencode(message, MESSAGE_LENGTH).c_str());
+    ESP_LOGD(TAG, "Unsupported command received: %s", format_hex_pretty(message, MESSAGE_LENGTH).c_str());
     return true;
   }
 
@@ -304,7 +314,7 @@ bool PanasonicClimate::on_receive(remote_base::RemoteReceiveData data) {
   /* Decode Message*/
 
   // Byte 6 - Mode
-  switch (message[5] & B11110000) {
+  switch (message[5] & 0xF0) {
     case PANASONIC_MODE_HEAT:
       this->mode = climate::CLIMATE_MODE_HEAT;
       break;
@@ -327,15 +337,15 @@ bool PanasonicClimate::on_receive(remote_base::RemoteReceiveData data) {
   }
 
   // Byte 6 - On / Off
-  if ((message[5] & B00001111) == PANASONIC_OFF) {
+  if ((message[5] & 0x0F) == PANASONIC_OFF) {
     this->mode = climate::CLIMATE_MODE_OFF;
   }
 
   /* Get the target temperature */
-  this->target_temperature = ((message[6] >> 1) & B00001111) + 16;
+  this->target_temperature = ((message[6] >> 1) & 0x0F) + 16;
 
   /* Fan Mode */
-  switch (message[8] & B11110000) {
+  switch (message[8] & 0xF0) {
     case PANASONIC_FAN_LOW:
       this->fan_mode = climate::CLIMATE_FAN_LOW;
       break;
@@ -352,9 +362,9 @@ bool PanasonicClimate::on_receive(remote_base::RemoteReceiveData data) {
 
   /* Swing Mode */
   const bool vertical_auto = this->get_traits().supports_swing_mode(climate::CLIMATE_SWING_VERTICAL) &&
-                             (message[8] & B00001111) == PANASONIC_SWING_V_AUTO;
+                             (message[8] & 0x0F) == PANASONIC_SWING_V_AUTO;
   const bool horizontal_auto = this->get_traits().supports_swing_mode(climate::CLIMATE_SWING_HORIZONTAL) &&
-                               ((message[9] & B00001111) == PANASONIC_SWING_H_AUTO);
+                               ((message[9] & 0x0F) == PANASONIC_SWING_H_AUTO);
 
   if (vertical_auto && horizontal_auto) {
     this->swing_mode = climate::CLIMATE_SWING_BOTH;
