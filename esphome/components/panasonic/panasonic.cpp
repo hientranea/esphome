@@ -61,7 +61,7 @@ const uint8_t DATACONST[8] = {0x40, 0x04, 0x07, 0x20, 0x00, 0x00, 0x00, 0x60};  
 const uint8_t DATACONST_LENGTH = 8;
 const uint8_t MESSAGE_LENGTH = 19;
 
-uint8_t reverse_bits(uint8_t, 8 byte, uint8_t num_bits) {
+uint8_t reverse_bits(uint8_t byte, uint8_t num_bits) {
   uint8_t result = 0;
   for (uint8_t i = 0; i < num_bits; i++) {
     result = (result << 1) | (byte & 1);
